@@ -34,7 +34,7 @@ final class MapKeyListener {
   }
 
   /**
-   * Called when the user presses a key, alse called for repeated keys held down.
+   * Called when the user presses a key, also called for repeated keys held down.
    *
    * @param keyCode the id of the pressed key
    * @param event   the related key event
@@ -86,8 +86,13 @@ final class MapKeyListener {
         // Cancel any animation
         transform.cancelTransitions();
 
-        // Move up
-        transform.moveBy(0.0, scrollDist, 0 /*no animation*/);
+        if (event.isCtrlPressed()) {
+          // decrease tilt value
+          mapGestureDetector.tiltCameraDownAnimated(true);
+        } else {
+          // Move up
+          transform.moveBy(0.0, scrollDist, 0 /*no animation*/);
+        }
         return true;
 
       case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -98,8 +103,13 @@ final class MapKeyListener {
         // Cancel any animation
         transform.cancelTransitions();
 
-        // Move down
-        transform.moveBy(0.0, -scrollDist, 0 /*no animation*/);
+        if (event.isCtrlPressed()) {
+          // decrease tilt value
+          mapGestureDetector.tiltCameraUpAnimated(true);
+        } else {
+          // Move down
+          transform.moveBy(0.0, -scrollDist, 0 /*no animation*/);
+        }
         return true;
 
       default:
@@ -127,8 +137,7 @@ final class MapKeyListener {
         }
 
         // Zoom out
-        PointF focalPoint = new PointF(uiSettings.getWidth() / 2, uiSettings.getHeight() / 2);
-        mapGestureDetector.zoomOutAnimated(focalPoint, true);
+        zoomMapCameraIn();
         return true;
 
       default:
@@ -162,9 +171,7 @@ final class MapKeyListener {
           return false;
         }
 
-        // Zoom in
-        PointF focalPoint = new PointF(uiSettings.getWidth() / 2, uiSettings.getHeight() / 2);
-        mapGestureDetector.zoomInAnimated(focalPoint, true);
+        zoomMapCameraIn();
         return true;
     }
 
@@ -190,8 +197,7 @@ final class MapKeyListener {
         // Cancel any animation
         transform.cancelTransitions();
 
-        // Scroll the map
-        transform.moveBy(-10.0 * event.getX(), -10.0 * event.getY(), 0 /*no animation*/);
+        zoomMapCameraIn();
         return true;
 
       // Trackball was pushed in so start tracking and tell system we are
@@ -217,9 +223,7 @@ final class MapKeyListener {
 
         // Only handle if we have not already long pressed
         if (currentTrackballLongPressTimeOut != null) {
-          // Zoom in
-          PointF focalPoint = new PointF(uiSettings.getWidth() / 2, uiSettings.getHeight() / 2);
-          mapGestureDetector.zoomInAnimated(focalPoint, true);
+          zoomMapCameraIn();
         }
         return true;
 
@@ -267,5 +271,11 @@ final class MapKeyListener {
         currentTrackballLongPressTimeOut = null;
       }
     }
+  }
+
+  private void zoomMapCameraIn() {
+    // Zoom in
+    PointF focalPoint = new PointF(uiSettings.getWidth() / 2, uiSettings.getHeight() / 2);
+    mapGestureDetector.zoomInAnimated(focalPoint, true);
   }
 }

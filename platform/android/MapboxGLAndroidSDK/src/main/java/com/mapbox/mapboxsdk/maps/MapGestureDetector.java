@@ -11,6 +11,8 @@ import android.support.annotation.Nullable;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
+
 import com.mapbox.android.gestures.AndroidGesturesManager;
 import com.mapbox.android.gestures.Constants;
 import com.mapbox.android.gestures.ShoveGestureDetector;
@@ -78,6 +80,7 @@ final class MapGestureDetector {
 
   private Animator scaleAnimator;
   private Animator rotateAnimator;
+  private Animator tiltAnimator;
   private final List<Animator> scheduledAnimators = new ArrayList<>();
 
   /**
@@ -226,6 +229,7 @@ final class MapGestureDetector {
 
     cancelAnimator(scaleAnimator);
     cancelAnimator(rotateAnimator);
+    cancelAnimator(tiltAnimator);
 
     dispatchCameraIdle();
   }
@@ -776,6 +780,40 @@ final class MapGestureDetector {
     }
   }
 
+  private Animator createTiltAnimator(double currentTilt, double tiltAddition, long animationTime) {
+    ValueAnimator animator = ValueAnimator.ofFloat((float) currentTilt, (float) (currentTilt + tiltAddition));
+    animator.setDuration(animationTime);
+    animator.setInterpolator(new LinearInterpolator());
+    animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+
+      @Override
+      public void onAnimationUpdate(@NonNull ValueAnimator animation) {
+        transform.setTilt((Double) animation.getAnimatedValue());
+      }
+    });
+
+    animator.addListener(new AnimatorListenerAdapter() {
+
+      @Override
+      public void onAnimationStart(Animator animation) {
+        transform.cancelTransitions();
+        cameraChangeDispatcher.onCameraMoveStarted(REASON_API_ANIMATION);
+      }
+
+      @Override
+      public void onAnimationCancel(Animator animation) {
+        transform.cancelTransitions();
+      }
+
+      @Override
+      public void onAnimationEnd(Animator animation) {
+        dispatchCameraIdle();
+      }
+    });
+    return animator;
+  }
+
+
   private Animator createScaleAnimator(double currentZoom, double zoomAddition,
                                        @NonNull final PointF animationFocalPoint, long animationTime) {
     ValueAnimator animator = ValueAnimator.ofFloat((float) currentZoom, (float) (currentZoom + zoomAddition));
@@ -822,6 +860,26 @@ final class MapGestureDetector {
   }
 
   /**
+   * Adjust the map camera so that the map's plane is tilted up.
+   *
+   * @param runImmediately if true, animation will be started right away, otherwise it will wait until
+   *                       {@link MotionEvent#ACTION_UP} is registered.
+   */
+  void tiltCameraUpAnimated(boolean runImmediately) {
+    tiltAnimated(true, runImmediately);
+  }
+
+  /**
+   * Adjust the map camera so that the map's plane is tilted down.
+   *
+   * @param runImmediately if true, animation will be started right away, otherwise it will wait until
+   * {@link MotionEvent#ACTION_UP} is registered.
+   */
+  void tiltCameraDownAnimated(boolean runImmediately) {
+    tiltAnimated(false, runImmediately);
+  }
+
+  /**
    * Zoom out by 1.
    *
    * @param zoomFocalPoint focal point of zoom animation
@@ -846,6 +904,21 @@ final class MapGestureDetector {
       scaleAnimator.start();
     } else {
       scheduleAnimator(scaleAnimator);
+    }
+  }
+
+  private void tiltAnimated(boolean tiltUp, boolean runImmediately) {
+    //canceling here as well, because when using a button it will not be canceled automatically by onDown()
+    cancelAnimator(tiltAnimator);
+
+    tiltAnimator = createTiltAnimator(
+        transform.getTilt(),
+        tiltUp ? 5 : -5,
+        MapboxConstants.ANIMATION_DURATION);
+    if (runImmediately) {
+      tiltAnimator.start();
+    } else {
+      scheduleAnimator(tiltAnimator);
     }
   }
 
