@@ -290,8 +290,15 @@ final class MapGestureDetector {
           // Get the vertical scroll amount, one click = 1
           float scrollDist = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
 
-          // Scale the map by the appropriate power of two factor
-          transform.zoomBy(scrollDist, new PointF(event.getX(), event.getY()));
+          // Check whether a keyboard control key is held down while the scrolling is happening. If so,
+          // tilt the map to scroll. More info at
+          // https://developer.android.com/reference/android/view/KeyEvent.html#META_CTRL_ON
+          if (event.getMetaState() == 4096) {
+            transform.setTilt(transform.getTilt() - scrollDist);
+          } else {
+            // Scale the map by the appropriate power of two factor
+            transform.zoomBy(scrollDist, new PointF(event.getX(), event.getY()));
+          }
 
           return true;
 
